@@ -8,3 +8,4 @@ def center_window(self):
         return
     rect = screen.availableGeometry()
     self.move((rect.width() - self.width()) // 2, (rect.height() - self.height()) // 2 )
+

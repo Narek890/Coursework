@@ -13,32 +13,42 @@ def initialize_database():
     cursor = conn.cursor()
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS clothing_items (
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )
+        """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS clothing_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         articul TEXT UNIQUE NOT NULL,
         name TEXT NOT NULL,
-        category TEXT NOT NULL,
         size TEXT NOT NULL,
         date_added TEXT NOT NULL,
         quantity INTEGER NOT NULL,
         cost REAL NOT NULL,
-        price REAL NOT NULL
-    )
+        price REAL NOT NULL,
+        category_id INTEGER NOT NULL,
+        material_id TEXT NOT NULL,
+        FOREIGN KEY (category_id) REFERENCES categories (id)
+        )  
     """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('user', 'admin', 'employee')) DEFAULT 'user'
     )    
     """)
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS categories (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL
-    )
+        CREATE TABLE IF NOT EXISTS materials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )
     """)
 
     conn.commit()
@@ -68,31 +78,48 @@ def seed_database():
     conn = create_connection()
     cursor = conn.cursor()
 
-    conn.commit()
+    # Сидирование категорий
+    categories = [
+        ('Одежда',),
+        ('Обувь',),
+        ('Аксессуары',)
+    ]
+    cursor.executemany("""
+        INSERT OR IGNORE INTO categories (name) VALUES (?)
+    """, categories)
 
+    # Сидирование пользователей
+    users = [
+        ('Admin', 'strongpass', 'admin')
+    ]
+    cursor.executemany("""
+        INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)
+    """, users)
+
+    # Сидирование материалов
+    materials = [
+        ('Ткань',),
+        ('Хлопок',),
+        ('Кожа',),
+        ('Мех',)
+    ]
+    cursor.executemany("""
+        INSERT OR IGNORE INTO materials (name) VALUES (?)
+    """, materials)
+
+    # Сидирование предметов одежды
+    clothing_items = [
+        ('12345', 'Футболка', 'M', 1, '2023-08-01', 10, 19.99, 29.99, 1),
+        ('67890', 'Джинсы', 'L', 2, '2023-08-02', 5, 24.99, 34.99, 1),
+        ('54321', 'Костюм', 'XS', 3, '2023-08-03', 20, 39.99, 49.99, 1)
+    ]
+    cursor.executemany("""
+        INSERT OR IGNORE INTO clothing_items 
+        (articul, name, size, material_id, date_added, quantity, cost, price, category_id) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, clothing_items)
+
+    conn.commit()
     conn.close()
 
-    print("База данных заполнена")
-
-
-def fetch_sales_by_category():
-    query = """
-    SELECT category, SUM(quantity) 
-    FROM clothing_items 
-    GROUP BY category
-    """
-    result = execute_query(query)
-    print(result)
-    if not result:
-        return None
-    categories, sales = zip(*result)
-    return categories, sales
-
-def fetch_analytics_data():
-    query = """
-    SELECT category, SUM(quantity) AS total_sales, 
-           SUM(price * quantity - cost * quantity) AS profit
-    FROM clothing_items 
-    GROUP BY category
-    """
-    return execute_query(query)
+    print("База данных успешно сидирована")
